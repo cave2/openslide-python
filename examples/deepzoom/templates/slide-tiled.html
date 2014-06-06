@@ -1,0 +1,126 @@
+<!doctype html>
+<title>{{ slide_filename }}</title>
+
+<style type="text/css">
+html {
+    overflow: hidden;
+}
+body {
+    margin: 0;
+    padding: 0;
+}
+div#view {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    color: white;
+}
+</style>
+
+<div id="view"></div>
+
+<script type="text/javascript" src="{{ url_for('static', filename='jquery.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='openseadragon.js') }}"></script>
+<script type="text/javascript">
+var args = {};
+var viewer;
+var testcount = 0;
+var tilex, tiley, tilew, tileh;
+var centre;
+
+$(document).ready(function() {
+    viewer = new OpenSeadragon({
+        id: "view",
+        tileSources: "{{ slide_url }}",
+        prefixUrl: "{{ url_for('static', filename='images/') }}",
+        animationTime: 0.5,
+        blendTime: 0.1,
+        constrainDuringPan: true,
+        maxZoomPixelRatio: 2,
+        minZoomLevel: 1,
+        visibilityRatio: 1,
+        zoomPerScroll: 2,
+        timeout: 120000,
+        showNavigator: false,
+        showNavigationControl: false,
+        /*showZoomControl: false,
+        showHomeControl: false,
+        showFullPageControl: false,
+        showSequenceControl: false,*/
+    });
+    viewer.addHandler("open", function() {
+        // To improve load times, ignore the lowest-resolution Deep Zoom
+        // levels.  This is a hack: we can't configure the minLevel via
+        // OpenSeadragon configuration options when the viewer is created
+        // from DZI XML.
+        viewer.source.minLevel = 8;
+
+        //Get tile config from args
+        tilex = parseInt(args["x"]) || 0;
+        tiley = parseInt(args["y"]) || 0;
+        tilew = parseInt(args["w"]) || 1;
+        tileh = parseInt(args["h"]) || 1;
+ 
+        //Initial offset
+        //centre = new OpenSeadragon.Point(0.0, 0.0);
+        centre = viewer.viewport.getCenter();
+
+        size = viewer.viewport.getContainerSize();
+        bounds = viewer.viewport.getBounds();
+
+        //initial zoom 0.25
+        viewer.viewport.zoomTo(0.25 * tilew)
+
+        //Calculate and set pan offset for this tile based on zoom
+        var zoom = viewer.viewport.getZoom() / tilew;
+        var panx = 0.0;
+        var pany = 0.0;
+        var xshift = ((tilew - 1) / 2.0 ) / tilew;
+        panx = tilex / tilew - xshift;
+        pany = tiley / tileh;
+
+        //var pan = new OpenSeadragon.Point(panx / zoom + centre.x, pany / zoom + centre.y);
+        var pan = new OpenSeadragon.Point(panx / zoom, pany / zoom);
+        //viewer.viewport.panTo(pan)
+        viewer.viewport.panBy(pan)
+    });
+
+    var urlq = decodeURI(window.location.href);
+    if (urlq.indexOf("#") > 0) {
+      var parts = urlq.split("#"); //whole querystring before and after ?
+      parts = parts[1].split("&");
+      for (var i in parts) {
+        var split = parts[i].split("=");
+        if (split.length == 2) {
+          args[split[0]] = split[1];
+        }
+      }
+    }
+});
+
+function zoomBy(z) {
+  //viewer.viewport.zoomBy(z); //new OpenSeadragon.Point(0.5, 0.5));
+  //centre.x += 1.5;//Depends on initial zoom and offset! ~0.333 for 1.0 in cave (20 tiles)
+        //centre = viewer.viewport.getCenter();
+  viewer.viewport.zoomBy(z, centre); //new OpenSeadragon.Point(0.5, 0.5));
+}
+
+function zoomTo(zoom) {
+  viewer.viewport.zoomTo(zoom);
+}
+
+function panBy(x, y) {
+  viewer.viewport.panBy(new OpenSeadragon.Point(x, y));
+        centre.x += x;
+        centre.y += y;
+}
+
+function panTo(x, y) {
+  viewer.viewport.panTo(new OpenSeadragon.Point(x, y));
+        centre.x = x;
+        centre.y = y;
+}
+
+</script>
